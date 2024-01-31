@@ -1,15 +1,26 @@
-import argparse
+from distutils.errors import CompileError
+from lib2to3.pgen2 import token
+from pydoc import Doc
+from telnetlib import DO
+from unittest.mock import _SentinelObject
+from xml.dom.minidom import DocumentType
 import pandas as pd
 import numpy as np
-
+import itertools
 from functools import reduce
+import igraph
 from copy import copy
+from scipy import sparse
 
 import os
+import gensim    
 import timeit
 from gensim.models.doc2vec import Doc2Vec, TaggedDocument
-from gensim.models import Word2Vec
+from gensim.models import Word2Vec, Phrases
 from gensim.models.fasttext import FastText
+
+from sklearn.feature_extraction.text import TfidfVectorizer
+from sklearn.cluster import KMeans
 
 import pyarrow.parquet as pq
 from konlpy.tag import Mecab
@@ -18,22 +29,11 @@ from sklearn.metrics.pairwise import cosine_similarity
 mecab = Mecab()
 
 
-def get_config():
-    p = argparse.ArgumentParser(description="Set arguments.")
-
-    p.add_argument("--seed", default="42", type=int)
-    p.add_argument("--file_name", default="acc_final_preproc", type=str)
-    p.add_argument("--terms", default="ego_terms", type=str)
-    p.add_argument("--text", default="인공지능과 자동차", type=str)
-    p.add_argument("--dir_path", default="/data/nevret/word_embedding", type=str)
-    
-    config = p.parse_args()
-
-    return config
-
-''' Preprocessing '''
+# ===============================
+# Preprocessing
+# ===============================
 def get_parqet_file(path, data):
-    ''' out of boundary 72184 error '''
+    # out of boundary 72184 error
     # data = pd.read_parquet(os.path.join(path, 'tipa_text_tokens_20220324.parquet'), engine='fastparquet')
     data = pq.read_table(os.path.join(path, data)).to_pandas()
     
@@ -61,6 +61,12 @@ def out_stopwords(data, list_stopwords):
     return data
 
 def input2vec(user_input, model, stopword_list):
+    # is_w2v = False if 'd2v' in model_fn else True
+    # if is_w2v:
+    #     model = Word2Vec.load(model_fn)
+    # else:
+    #     model = Doc2Vec.load(model_fn)
+
     word_dict = {}
     for vocab in model.wv.index_to_key:
         word_dict[vocab] = model.wv[vocab]
@@ -77,7 +83,10 @@ def input2vec(user_input, model, stopword_list):
 
     return user_vector
 
-''' Modeling '''
+
+# ===============================
+# Modeling
+# ===============================
 def word2vec(data, terms, model_fn):
     documents = []
     for doc in data[terms]:
@@ -104,12 +113,13 @@ def word2vec(data, terms, model_fn):
 
     model.save(model_fn)
 
-''' Make Subject Embedding '''
+# word2vec을 통한 과제 vector 생성
 def word2vec_documents(data, terms, w2v_model):
     word_dict = {}
     for vocab in w2v_model.wv.index_to_key:
         word_dict[vocab] = w2v_model.wv[vocab]
 
+    # MAKE SBJT VECTOR
     dict_doc_vector = {}
     for idx in data.index:
         list_vector = []
@@ -219,6 +229,7 @@ def fasttext_documents(data, terms, ft_model):
     for vocab in ft_model.wv.index_to_key:
         word_dict[vocab] = ft_model.wv[vocab]
 
+    # MAKE SBJT VECTOR
     dict_doc_vector = {}
     for idx in data.index:
         list_vector = []
@@ -263,22 +274,34 @@ def remove_stopwords(col):
 
 
 if __name__ == '__main__':
-    config = get_config()
-    
+    BASE_PATH = '/home/analysis-2/data/temp_parquet/'
+    DATA_PATH = 'tipa_text_tokens_20220328.parquet'    # 20220324, 20220328
+    DATA_PATH_ = 'tipa_text_tokens_20220324.parquet'
+
     terms = 'ego_terms'    # terms
     test = '인공지능'
     text = '인공지능과 자동차'
+    w2v_model_fn = './tipa_model/tipa.w2v.refined.token.model'
+    d2v_model_fn = './tipa_model/tipa.d2v.refined.token.model'
+    ft_model_fn = './tipa_model/tipa.ft.refined.token.model'
+    ft_model_fn_ = './tipa_model/tipa.ft.ego.token.v100.model'
+    stopwords_url = './tipa_model/stopwords.txt'
 
-    w2v_model_fn =  'tipa_model/tipa.w2v.refined.token.model'
-    d2v_model_fn = 'tipa_model/tipa.d2v.refined.token.model'
-    ft_model_fn = 'tipa_model/tipa.ft.refined.token.model'
-    stopwords_url = 'tipa_model/stopwords.txt'
-
-    data = pq.read_table(os.path.join(config.dir_path + f'/tipa_text_tokens_20220328.parquet')).to_pandas().sort_values('sbjt_id').reset_index(drop=True)
-    tmp = pq.read_table(os.path.join(config.dir_path + f'/sbjt_vector_df.parquet')).to_pandas().sort_values('sbjt_id').reset_index(drop=True)
+    data = get_parqet_file(BASE_PATH, DATA_PATH).sort_values('sbjt_id').reset_index(drop=True)
     data = data.rename(columns={'terms': 'ego_terms',
                                 'refined_terms': 'refined_ego_terms'})
-  
+    data_ = get_parqet_file(BASE_PATH, DATA_PATH_).sort_values('sbjt_id').reset_index(drop=True)
+    
+    tmp = pq.read_table('sbjt_vector_df.parquet').to_pandas().sort_values('sbjt_id')
+
+    merge_data = pd.merge(data, data_, on='sbjt_id', how='left')
+    
+    # index = pd.concat([data['sbjt_id'], data_['sbjt_id']], axis=0).drop_duplicates(keep=False)
+
+    # difference set
+    df = data.append(data_)
+    df = df.drop_duplicates(subset=['sbjt_id'], keep=False)
+
     stopword_list = get_stopwords(stopwords_url)
     
     data['ego_terms'] = data['ego_terms'].apply(remove_stopwords)
