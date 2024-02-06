@@ -1,12 +1,10 @@
+import os
+import timeit
 import argparse
 import pandas as pd
 import numpy as np
 
-from functools import reduce
 from copy import copy
-
-import os
-import timeit
 from gensim.models.fasttext import FastText
 
 import pyarrow.parquet as pq
@@ -30,7 +28,7 @@ def get_config():
     p.add_argument("--terms", default="ego_terms", type=str)             # ego_terms, refined_ego_terms
     p.add_argument("--vocab_word", default="인공지능", type=str)
     p.add_argument("--input_text", default="인공지능과 자동차", type=str)
-    p.add_argument("--dir_path", default="/data/nevret/word_embedding", type=str)
+    p.add_argument("--dir_path", default="/data/nevret/word-embedding-model", type=str)
     
     config = p.parse_args()
 
@@ -45,7 +43,6 @@ def remove_stopwords(config):
 
     return col
 
-''' Preprocessing '''
 def read_data(config):
     data = pq.read_table(os.path.join(config.dir_path + f'/finetune/data/tipa_text_tokens_20220328.parquet')).to_pandas().sort_values('sbjt_id').reset_index(drop=True)
     data = data.rename(columns={'terms': 'ego_terms',
@@ -56,7 +53,7 @@ def read_data(config):
     return data
 
 def get_stopwords(config):
-    stopwords_file = list(open(os.path.join(config.dir_path, 'stopwords.txt'), 'r'))
+    stopwords_file = list(open(os.path.join(config.dir_path, 'finetune/stopwords.txt'), 'r'))
     list_stopword = []
     for i in stopwords_file:
         list_stopword.append(i[:-1])
@@ -177,7 +174,7 @@ def main():
 
     # Make FastText model
     # fasttext_model = fasttext(config, data)
-    fasttext_model = FastText.load(os.path.join(config.dir_path + '/finetune/model/tipa.w2v.refined.token.model'))
+    fasttext_model = FastText.load(os.path.join(config.dir_path + '/finetune/model/fasttext/tipa.ft.refined.token.model'))
     
     # Test
     print(f"\nGet Nearest Word (FastText): {config.vocab_word}")

@@ -57,6 +57,7 @@ def word2vec_member(mbr_list, sbjt_vector):
     try:
         mbr_vector = pd.merge(mbr_sbjt_vector, mbr_vector_df, how='left', on='mbr_id')
         mbr_vector = mbr_vector[['mbr_id', 'mbr_vector']].drop_duplicates(['mbr_id'])
+        
     except ValueError:
         mbr_vector = mbr_vector_df
 
@@ -95,9 +96,7 @@ def get_cosine_similarity(grp_key, w2v_sbjt_vector, w2v_mbr_vector):
 
 # 전체 process
 def total_process(result, model_path):
-    # Word2Vec model path
-    # w2v_model_fn = './analysis/sna/tipa_model/tipa.w2v.refined.token.model'
-    # Load Word2Vec model
+    # Word embedding model
     w2v_model = Word2Vec.load(model_path)
 
     # 과제 embedding
