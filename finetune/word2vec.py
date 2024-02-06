@@ -57,7 +57,7 @@ def read_data(config):
     return data
 
 def get_stopwords(config):
-    stopwords_file = list(open(os.path.join(config.dir_path, 'finetune/stopwords.txt'), 'r'))
+    stopwords_file = list(open(os.path.join(config.dir_path, 'finetune/utils/stopwords.txt'), 'r'))
     list_stopword = []
     for i in stopwords_file:
         list_stopword.append(i[:-1])

@@ -11,11 +11,11 @@
 │   │   └── embedding.py
 │   ├── finetune.py
 │   │   ├── utils
-│   │   │   └── utils.py
+│   │   │   ├── utils.py
+│   │   │   └── stopwords.py
 │   │   ├── doc2vec.py
 │   │   ├── fasttext.py
-│   │   ├── word2vec.py
-│   │   └── stopwords.txt
+│   │   └── word2vec.py
 │   ├── README.md
 │   └── requirements.txt
 ```
