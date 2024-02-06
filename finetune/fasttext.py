@@ -12,7 +12,7 @@ from konlpy.tag import Mecab
 # from torch import cosine_similarity
 from sklearn.metrics.pairwise import cosine_similarity
 
-from utils import *
+from utils.utils import *
 
 mecab = Mecab()
 seed_everything(42)
